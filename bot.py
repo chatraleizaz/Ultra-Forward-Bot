@@ -14,12 +14,9 @@ from pyrogram.errors import FloodWait
 from aiohttp import web
 from plugins import web_server 
 
-#Dont Remove My Credit @Silicon_Bot_Update 
-#This Repo Is By @Silicon_Official 
-# For Any Kind Of Error Ask Us In Support Group @Silicon_Botz 
-
-logging.config.fileConfig('logging.conf')
-logging.getLogger().setLevel(logging.INFO)
+# Configure logging
+logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 
 class Bot(Client): 
@@ -33,56 +30,61 @@ class Bot(Client):
             workers=200,
             plugins={"root": "plugins"}
         )
-        self.log = logging
+        self.logger = logger
 
     async def start_bot(self):
         await self.start()
         me = await self.get_me()
-        logging.info(f"{me.first_name} with for pyrogram v{__version__} (Layer {layer}) started on @{me.username}.")
-        app = web.AppRunner(await web_server())
-        await app.setup()
-        bind_address = "0.0.0.0"
-        await web.TCPSite(app, bind_address, Config.PORT).start()
         self.id = me.id
         self.username = me.username
         self.first_name = me.first_name
         self.set_parse_mode(ParseMode.DEFAULT)
-        text = "<b>๏[-ิ_•ิ]๏ ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ !</b>"
-        logging.info(text)
-        success = failed = 0
+        
+        logger.info(f"{me.first_name} | Pyrogram v{__version__} | Layer {layer} | Username: @{me.username}")
+        logger.info("Bot started successfully.")
 
+        # Start web server
+        app = web.AppRunner(await web_server())
+        await app.setup()
+        await web.TCPSite(app, "0.0.0.0", int(Config.PORT)).start()
+
+        # Notify users
+        text = "<b>๏[-ิ_•ิ]๏ ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ !</b>"
+        logger.info(text)
+
+        success = failed = 0
         users = await db.get_all_frwd()
         async for user in users:
-            chat_id = user['user_id']
             try:
-                await self.send_message(chat_id, text)
+                await self.send_message(user['user_id'], text)
                 success += 1
             except FloodWait as e:
                 await asyncio.sleep(e.value + 1)
-                await self.send_message(chat_id, text)
+                await self.send_message(user['user_id'], text)
                 success += 1
             except Exception:
                 failed += 1 
-        if (success + failed) != 0:
+
+        if (success + failed) > 0:
             await db.rmve_frwd(all=True)
-            logging.info(f"Restart message status | success: {success} | failed: {failed}")
+            logger.info(f"Restart messages sent | Success: {success} | Failed: {failed}")
 
     async def stop_bot(self):
-        msg = f"@{self.username} stopped. Bye."
+        logger.info(f"Bot @{self.username} is shutting down...")
         await self.stop()
-        logging.info(msg)
+        logger.info("Bot stopped cleanly.")
 
-# Entry point
+# Main function
 app = Bot()
 
 async def main():
-    await app.start_bot()
-    await idle()
-    await app.stop_bot()
+    try:
+        await app.start_bot()
+        await idle()
+    except asyncio.CancelledError:
+        pass
+    finally:
+        await app.stop_bot()
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-#Dont Remove My Credit @Silicon_Bot_Update 
-#This Repo Is By @Silicon_Official 
-# For Any Kind Of Error Ask Us In Support Group @Silicon_Botz
