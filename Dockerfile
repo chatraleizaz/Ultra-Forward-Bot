@@ -3,18 +3,20 @@ FROM python:3.8-slim-buster
 # Install system dependencies
 RUN apt update && apt upgrade -y && apt install -y git
 
-# Copy and install Python dependencies
-COPY requirements.txt /requirements.txt
-RUN pip3 install --upgrade pip && pip3 install -r /requirements.txt
-
-# Create working directory
+# Set work directory early
 WORKDIR /fwdbot
 
-# Copy all bot files into the container
-COPY . /fwdbot
+# Copy only requirements first (better caching)
+COPY requirements.txt .
 
-# Ensure start.sh is executable
-RUN chmod +x /fwdbot/start.sh
+# Install Python dependencies
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Run the start script
-CMD ["/bin/bash", "/fwdbot/start.sh"]
+# Copy all files into the container
+COPY . .
+
+# Make sure the start script is executable
+RUN chmod +x start.sh
+
+# Start the bot
+CMD ["bash", "start.sh"]
